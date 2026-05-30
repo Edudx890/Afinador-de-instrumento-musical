@@ -10,6 +10,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import AudioRecord from 'react-native-audio-record';
+import { Buffer } from 'buffer';
 import { detectPitch } from '../utils/noteDetection';
 
 // Configurações de captura de áudio
@@ -45,7 +46,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   // Referências para controle do processamento
   const isActiveRef = useRef(false);
-  const updateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const updateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioBufferRef = useRef<number[]>([]);
 
   /**
