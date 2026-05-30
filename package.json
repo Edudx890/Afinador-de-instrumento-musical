@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "buffer": "^6.0.3",
     "expo": "~54.0.35",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
