@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Afinador de Violao",
+    "slug": "afinador-violao",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0D1B2A",
+    "android": {
+      "package": "com.academico.afinadorviolao",
+      "permissions": ["RECORD_AUDIO"],
+      "predictiveBackGestureEnabled": false
+    }
+  }
+}

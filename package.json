@@ -1,35 +1,27 @@
 {
-  "name": "AfinadorViolao",
+  "name": "afinador-violao",
   "version": "1.0.0",
   "private": true,
+  "main": "index.ts",
   "scripts": {
-    "android": "react-native run-android",
-    "ios": "react-native run-ios",
-    "start": "react-native start",
-    "test": "jest",
-    "lint": "eslint ."
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "18.2.0",
-    "react-native": "0.73.4",
-    "react-native-audio-record": "^0.2.2",
-    "react-native-sound": "^0.11.2",
-    "react-native-svg": "^14.1.0"
+    "buffer": "^6.0.3",
+    "expo": "~54.0.35",
+    "expo-status-bar": "~3.0.9",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-svg": "15.12.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0",
-    "@babel/preset-env": "^7.20.0",
-    "@babel/runtime": "^7.20.0",
-    "@react-native/babel-preset": "0.73.21",
-    "@react-native/eslint-config": "0.73.2",
-    "@react-native/metro-config": "0.73.3",
-    "@react-native/typescript-config": "0.73.1",
-    "@types/react": "^18.2.6",
-    "@types/react-native-sound": "^0.11.2",
-    "typescript": "5.0.4"
-  },
-  "jest": {
-    "preset": "react-native"
+    "@types/react": "~19.1.0",
+    "babel-preset-expo": "~54.0.11",
+    "typescript": "~5.9.2"
   },
   "engines": {
     "node": ">=18"
