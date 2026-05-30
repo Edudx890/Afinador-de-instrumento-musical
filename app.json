@@ -8,6 +8,7 @@
     "backgroundColor": "#0D1B2A",
     "android": {
       "package": "com.academico.afinadorviolao",
+      "versionCode": 1,
       "permissions": ["RECORD_AUDIO"],
       "predictiveBackGestureEnabled": false
     }
