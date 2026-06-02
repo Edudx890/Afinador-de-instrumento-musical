@@ -16,11 +16,26 @@ export interface NoteInfo {
   status: 'afinado' | 'grave' | 'agudo' | 'silencio';
 }
 
+export interface GuitarString {
+  string: number;
+  note: string;
+  octave: number;
+  frequency: number;
+}
+
+export interface TuningResult {
+  guitarString: GuitarString | null;
+  detectedFrequency: number;
+  targetFrequency: number;
+  cents: number;
+  status: NoteInfo['status'];
+}
+
 // Lista de notas musicais na escala cromática
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 // Notas do violão (cordas em afinação padrão: E2, A2, D3, G3, B3, E4)
-export const GUITAR_STRINGS = [
+export const GUITAR_STRINGS: GuitarString[] = [
   { string: 6, note: 'E', octave: 2, frequency: 82.41 },
   { string: 5, note: 'A', octave: 2, frequency: 110.00 },
   { string: 4, note: 'D', octave: 3, frequency: 146.83 },
@@ -97,19 +112,68 @@ export function findNearestGuitarString(frequency: number) {
   if (!frequency || frequency < 20) return null;
 
   let nearestString = GUITAR_STRINGS[0];
-  let minDiff = Math.abs(frequency - GUITAR_STRINGS[0].frequency);
+  let minDiff = Math.abs(getCentsDifference(frequency, nearestString.frequency));
 
   GUITAR_STRINGS.forEach(guitarString => {
-    // Compara em escala logarítmica para melhor percepção musical
-    const diff = Math.abs(Math.log2(frequency / guitarString.frequency));
-    const minDiffLog = Math.abs(Math.log2(nearestString.frequency) - Math.log2(GUITAR_STRINGS[0].frequency));
-    
-    if (diff < Math.abs(Math.log2(frequency / nearestString.frequency))) {
+    const diff = Math.abs(getCentsDifference(frequency, guitarString.frequency));
+
+    if (diff < minDiff) {
+      minDiff = diff;
       nearestString = guitarString;
     }
   });
 
   return nearestString;
+}
+
+export function getCentsDifference(frequency: number, targetFrequency: number): number {
+  if (!frequency || !targetFrequency) return 0;
+  return Math.round(1200 * Math.log2(frequency / targetFrequency));
+}
+
+export function getTuningResult(
+  frequency: number,
+  selectedString: number | null = null
+): TuningResult {
+  if (!frequency || frequency < 20) {
+    const targetString = selectedString
+      ? GUITAR_STRINGS.find(item => item.string === selectedString) ?? null
+      : null;
+
+    return {
+      guitarString: targetString,
+      detectedFrequency: 0,
+      targetFrequency: targetString?.frequency ?? 0,
+      cents: 0,
+      status: 'silencio',
+    };
+  }
+
+  const targetString = selectedString
+    ? GUITAR_STRINGS.find(item => item.string === selectedString) ?? null
+    : findNearestGuitarString(frequency);
+
+  if (!targetString) {
+    return {
+      guitarString: null,
+      detectedFrequency: frequency,
+      targetFrequency: 0,
+      cents: 0,
+      status: 'silencio',
+    };
+  }
+
+  const rawCents = getCentsDifference(frequency, targetString.frequency);
+  const status: NoteInfo['status'] =
+    Math.abs(rawCents) <= 8 ? 'afinado' : rawCents < 0 ? 'grave' : 'agudo';
+
+  return {
+    guitarString: targetString,
+    detectedFrequency: frequency,
+    targetFrequency: targetString.frequency,
+    cents: Math.max(-50, Math.min(50, rawCents)),
+    status,
+  };
 }
 
 /**

@@ -1,158 +1,175 @@
-# 🎸 Afinador de Violão — React Native
+# Afinador de Violão
 
-Aplicativo mobile para afinar violão em tempo real usando o microfone do dispositivo.
+Aplicativo mobile acadêmico para afinar violão em Android. O MVP usa React Native, Expo e TypeScript, com tela única de afinador, permissão de microfone, detecção de frequência e indicação visual de afinação.
 
-**Integrantes:** Moreno Jones e Eduardo Amaral
+Integrantes: Moreno Jones e Eduardo Amaral
 
----
+## Stack
 
-## 📋 Pré-requisitos
+- Expo SDK 54
+- React Native 0.81
+- React 19
+- TypeScript
+- EAS Build para gerar APK Android
 
-- Node.js 18+
-- React Native CLI
-- Android Studio + Android SDK
-- JDK 17
-- Dispositivo Android (API 21+) ou Emulador com microfone
+## Requisitos
 
----
+- Node.js 18 ou superior
+- npm
+- Conta Expo para build EAS
+- Android físico para testar o microfone
+- Android Studio/JDK apenas se for testar build nativo localmente
 
-## 🚀 Como Rodar
+No Arch Linux, instale Node/npm via seu gerenciador de pacotes ou ferramenta de versionamento de Node. No Windows, use Node LTS e execute os comandos em PowerShell, CMD ou terminal integrado do VS Code.
 
-### 1. Instalar dependências
+## Instalação
 
 ```bash
 npm install
 ```
 
-### 2. Instalar pods (iOS — opcional)
+## Rodar durante o desenvolvimento
 
 ```bash
-cd ios && pod install && cd ..
+npm start
 ```
 
-### 3. Linkar bibliotecas nativas (React Native < 0.60)
+Ou diretamente:
 
 ```bash
-npx react-native link
+npx expo start
 ```
 
-Para React Native 0.60+, o autolink já cuida disso automaticamente.
+Importante: a detecção real de áudio usa `react-native-audio-record`, que é um módulo nativo. Por isso, o Expo Go não é suficiente para validar a captura de áudio PCM. Para testar o MVP completo, use um APK gerado pelo EAS ou um development build.
 
-### 4. Adicionar permissão no AndroidManifest.xml
-
-Já incluída em `android/AndroidManifest.xml`:
-```xml
-<uses-permission android:name="android.permission.RECORD_AUDIO" />
-```
-
-### 5. Adicionar sons de referência (opcional)
-
-Coloque os arquivos `.mp3` em:
-```
-android/app/src/main/res/raw/
-```
-
-Nomes esperados:
-| Arquivo         | Nota  | Frequência |
-|-----------------|-------|------------|
-| `ref_e2.mp3`    | Mi ²  | 82.41 Hz   |
-| `ref_a2.mp3`    | Lá ²  | 110.00 Hz  |
-| `ref_d3.mp3`    | Ré ³  | 146.83 Hz  |
-| `ref_g3.mp3`    | Sol ³ | 196.00 Hz  |
-| `ref_b3.mp3`    | Si ³  | 246.94 Hz  |
-| `ref_e4.mp3`    | Mi ⁴  | 329.63 Hz  |
-
-> Você pode gerar esses arquivos com Audacity, GarageBand ou qualquer sintetizador online.
-
-### 6. Rodar no Android
+## Validação TypeScript
 
 ```bash
-# Inicia o Metro bundler
-npx react-native start
-
-# Em outro terminal, instala no dispositivo
-npx react-native run-android
+npm run typecheck
 ```
 
----
+## APK Android
 
-## 📁 Estrutura do Projeto
+O projeto já possui perfil `preview` configurado em `eas.json` para gerar APK:
 
-```
-AfinadorViolao/
-├── App.tsx                          # Componente raiz
-├── package.json                     # Dependências
-├── tsconfig.json                    # Configuração TypeScript
-├── babel.config.js                  # Configuração Babel
-├── metro.config.js                  # Configuração Metro
-├── android/
-│   ├── AndroidManifest.xml          # Permissões Android
-│   └── app/src/main/res/raw/        # Sons de referência (.mp3)
-└── src/
-    ├── components/
-    │   ├── TunerScreen.tsx          # Tela principal
-    │   ├── TunerGauge.tsx           # Medidor visual (ponteiro)
-    │   ├── GuitarStringSelector.tsx # Seletor de cordas
-    │   └── ReferenceSounds.tsx      # Sons de referência
-    ├── hooks/
-    │   └── useAudioCapture.ts       # Hook de captura de áudio
-    └── utils/
-        └── noteDetection.ts         # Detecção de frequência e notas
+```bash
+npm run build:android:apk
 ```
 
----
+Comando equivalente:
 
-## 🎵 Cordas do Violão (Afinação Padrão)
+```bash
+npx eas-cli@latest build -p android --profile preview
+```
+
+Antes do primeiro build, pode ser necessário autenticar:
+
+```bash
+npx eas-cli@latest login
+```
+
+## Testar APK no Android físico
+
+Use este fluxo para validar o MVP completo, incluindo microfone real:
+
+1. Gere o APK preview:
+
+   ```bash
+   npm run build:android:apk
+   ```
+
+2. Aguarde o EAS finalizar o build.
+
+3. Abra no telefone Android o link ou QR code exibido pelo EAS.
+
+4. Baixe o arquivo `.apk`.
+
+5. Se o Android bloquear a instalação, habilite a permissão de instalar apps desconhecidos para o navegador ou gerenciador de arquivos usado no download.
+
+6. Instale o APK e abra o aplicativo.
+
+7. Permita o acesso ao microfone quando o app solicitar.
+
+8. Toque uma corda do violão e confira:
+   - frequência detectada em Hz;
+   - corda alvo ou mais próxima;
+   - diferença em cents;
+   - status visual: grave, afinada ou aguda.
+
+Alternativa com `adb`, caso o APK tenha sido baixado no computador:
+
+```bash
+adb devices
+adb install caminho/do/app.apk
+```
+
+Se já existir uma versão anterior instalada e o Android recusar a instalação:
+
+```bash
+adb install -r caminho/do/app.apk
+```
+
+Observação: o Expo Go não valida a captura real de áudio deste projeto, porque o microfone PCM usa `react-native-audio-record`, que é um módulo nativo.
+
+## Funcionalidades do MVP
+
+- Tela única de afinador
+- Botão para iniciar/parar escuta do microfone
+- Solicitação de permissão de microfone no Android
+- Frequência detectada em Hz
+- Corda do violão alvo ou mais próxima
+- Diferença em cents
+- Status visual: grave, afinada ou aguda
+- Perfil EAS para gerar APK instalável
+
+## Cordas padrão do violão
 
 | Corda | Nota | Frequência |
-|-------|------|-----------|
-| 6ª (mais grossa) | E2 | 82.41 Hz |
+| --- | --- | --- |
+| 6ª | E2 | 82.41 Hz |
 | 5ª | A2 | 110.00 Hz |
 | 4ª | D3 | 146.83 Hz |
 | 3ª | G3 | 196.00 Hz |
 | 2ª | B3 | 246.94 Hz |
-| 1ª (mais fina) | E4 | 329.63 Hz |
+| 1ª | E4 | 329.63 Hz |
 
----
+## Estrutura
 
-## 🔧 Bibliotecas Utilizadas
+```text
+.
+├── App.tsx
+├── app.json
+├── eas.json
+├── index.ts
+├── package.json
+├── src
+│   ├── components
+│   │   ├── GuitarStringSelector.tsx
+│   │   ├── ReferenceSounds.tsx
+│   │   ├── TunerGauge.tsx
+│   │   └── TunerScreen.tsx
+│   ├── hooks
+│   │   └── useAudioCapture.ts
+│   ├── types
+│   │   └── react-native-audio-record.d.ts
+│   └── utils
+│       └── noteDetection.ts
+└── tsconfig.json
+```
 
-| Biblioteca | Versão | Uso |
-|------------|--------|-----|
-| react-native | 0.73.4 | Framework base |
-| react-native-audio-record | 0.2.2 | Captura de áudio PCM |
-| react-native-sound | 0.11.2 | Reprodução de sons |
-| react-native-svg | 14.1.0 | Medidor visual SVG |
+## Observações técnicas
 
----
+- A permissão de microfone é declarada em `app.json`.
+- O cálculo de cents compara a frequência detectada com a corda selecionada ou com a corda mais próxima.
+- O módulo `react-native-audio-record` exige build nativo. Se o app abrir no Expo Go, a interface pode carregar, mas a captura real de áudio não deve ser considerada validada.
+- O projeto não mantém uma pasta Android nativa completa no repositório. A configuração principal do Expo fica em `app.json` e `eas.json`.
 
-## 📐 Algoritmo de Detecção
+## Comandos úteis
 
-O app usa **autocorrelação** para detectar a frequência fundamental:
-
-1. Captura buffer de áudio PCM (44100 Hz, mono, 16 bits)
-2. Aplica **janela de Hanning** para reduzir vazamento espectral
-3. Calcula **autocorrelação** para encontrar o período do sinal
-4. Converte período → frequência (Hz)
-5. Mapeia frequência → nota musical usando a fórmula:
-   ```
-   n = 12 × log₂(f / 440) + 69  (número MIDI)
-   cents = 1200 × log₂(f_real / f_ideal)
-   ```
-6. Classifica: |cents| ≤ 8 → **afinado** | cents < 0 → **grave** | cents > 0 → **agudo**
-
----
-
-## ⚠️ Solução de Problemas
-
-**Microfone não funciona no emulador:**
-- Certifique-se de que o emulador tem microfone configurado
-- Use um dispositivo físico para melhor resultado
-
-**Erro de permissão:**
-- Vá em Configurações → Apps → AfinadorViolao → Permissões → Microfone
-
-**Metro bundler não inicia:**
 ```bash
-npx react-native start --reset-cache
+npm install
+npm start
+npm run typecheck
+npx expo-doctor
+npm run build:android:apk
 ```

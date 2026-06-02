@@ -19,7 +19,7 @@ import {
   Animated,
 } from 'react-native';
 import { useAudioCapture } from '../hooks/useAudioCapture';
-import { frequencyToNote, findNearestGuitarString, NoteInfo } from '../utils/noteDetection';
+import { getTuningResult, TuningResult } from '../utils/noteDetection';
 import TunerGauge from './TunerGauge';
 import GuitarStringSelector from './GuitarStringSelector';
 import ReferenceSounds from './ReferenceSounds';
@@ -31,58 +31,47 @@ export default function TunerScreen() {
   // Corda selecionada manualmente (null = automático)
   const [selectedString, setSelectedString] = useState<number | null>(null);
 
-  // Histórico das últimas notas detectadas (para suavizar exibição)
-  const [noteHistory, setNoteHistory] = useState<NoteInfo[]>([]);
+  // Histórico das últimas leituras (para suavizar exibição)
+  const [tuningHistory, setTuningHistory] = useState<TuningResult[]>([]);
 
   // Animação de pulso para o display de nota
   const pulseAnim = useMemo(() => new Animated.Value(1), []);
 
   /**
-   * Processa a frequência detectada e atualiza o histórico de notas
+   * Processa a frequência detectada e atualiza o histórico de leituras
    * Mantém as últimas 5 detecções para suavizar a exibição
    */
   useEffect(() => {
-    const noteInfo = frequencyToNote(frequency);
-    
-    if (noteInfo) {
-      setNoteHistory(prev => {
-        const updated = [...prev, noteInfo].slice(-5);
-        return updated;
-      });
-    }
-  }, [frequency]);
+    const tuningResult = getTuningResult(frequency, selectedString);
+
+    setTuningHistory(prev => [...prev, tuningResult].slice(-5));
+  }, [frequency, selectedString]);
 
   /**
    * Calcula a nota atual usando média ponderada do histórico
    * Notas mais recentes têm maior peso
    */
-  const currentNote = useMemo((): NoteInfo => {
-    if (noteHistory.length === 0 || !isListening) {
-      return {
-        note: '--',
-        octave: 0,
-        frequency: 0,
-        cents: 0,
-        status: 'silencio',
-      };
+  const currentTuning = useMemo((): TuningResult => {
+    if (tuningHistory.length === 0 || !isListening) {
+      return getTuningResult(0, selectedString);
     }
 
-    const recent = noteHistory[noteHistory.length - 1];
+    const recent = tuningHistory[tuningHistory.length - 1];
     
     // Suavização: usa média dos últimos 3 valores de cents
-    const recentCents = noteHistory.slice(-3).map(n => n.cents);
+    const recentCents = tuningHistory.slice(-3).map(n => n.cents);
     const avgCents = Math.round(
       recentCents.reduce((a, b) => a + b, 0) / recentCents.length
     );
 
     return { ...recent, cents: avgCents };
-  }, [noteHistory, isListening]);
+  }, [tuningHistory, isListening, selectedString]);
 
   /**
    * Anima o display de nota quando uma nova nota é detectada
    */
   useEffect(() => {
-    if (currentNote.status !== 'silencio') {
+    if (currentTuning.status !== 'silencio') {
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.05,
@@ -96,7 +85,7 @@ export default function TunerScreen() {
         }),
       ]).start();
     }
-  }, [currentNote.note, pulseAnim]);
+  }, [currentTuning.detectedFrequency, currentTuning.status, pulseAnim]);
 
   /**
    * Alterna entre escutar e parar de escutar
@@ -104,9 +93,9 @@ export default function TunerScreen() {
   const toggleListening = () => {
     if (isListening) {
       stopListening();
-      setNoteHistory([]);
+      setTuningHistory([]);
     } else {
-      startListening();
+      void startListening();
     }
   };
 
@@ -116,11 +105,19 @@ export default function TunerScreen() {
     grave: '#FF5252',
     agudo: '#FF5252',
     silencio: '#546E7A',
-  }[currentNote.status];
+  }[currentTuning.status];
 
-  // Frequência exibida: usa a ideal se corda selecionada, senão a detectada
+  const currentString = currentTuning.guitarString;
+  const noteLabel = currentString
+    ? `${currentString.note}${currentString.octave}`
+    : '--';
+
   const displayFrequency = isListening && frequency > 0
-    ? `${Math.round(frequency)} Hz`
+    ? `${frequency.toFixed(1)} Hz`
+    : '-- Hz';
+
+  const targetFrequency = currentString
+    ? `${currentString.frequency.toFixed(2)} Hz`
     : '-- Hz';
 
   return (
@@ -139,35 +136,36 @@ export default function TunerScreen() {
       <Animated.View style={[styles.noteDisplay, { transform: [{ scale: pulseAnim }] }]}>
         {/* Nome da nota em destaque */}
         <Text style={[styles.noteName, { color: statusColor }]}>
-          {currentNote.note}
+          {noteLabel}
         </Text>
 
-        {/* Oitava e frequência detectada */}
+        {/* Corda e frequências */}
         <View style={styles.noteDetails}>
-          {currentNote.status !== 'silencio' && (
+          {currentString && (
             <Text style={styles.octaveText}>
-              Oitava {currentNote.octave}
+              {currentString.string}ª corda
             </Text>
           )}
-          <Text style={styles.frequencyText}>{displayFrequency}</Text>
+          <Text style={styles.frequencyText}>Detectada: {displayFrequency}</Text>
+          <Text style={styles.targetFrequencyText}>Alvo: {targetFrequency}</Text>
         </View>
 
         {/* Mensagem de status */}
         <View style={[styles.statusBadge, { borderColor: statusColor }]}>
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {currentNote.status === 'afinado' && '✓ AFINADO'}
-            {currentNote.status === 'grave' && '↓ GRAVE'}
-            {currentNote.status === 'agudo' && '↑ AGUDO'}
-            {currentNote.status === 'silencio' && isListening ? '~ OUVINDO...' : ''}
-            {currentNote.status === 'silencio' && !isListening ? '○ PARADO' : ''}
+            {currentTuning.status === 'afinado' && '✓ AFINADA'}
+            {currentTuning.status === 'grave' && '↓ GRAVE'}
+            {currentTuning.status === 'agudo' && '↑ AGUDA'}
+            {currentTuning.status === 'silencio' && isListening ? '~ OUVINDO...' : ''}
+            {currentTuning.status === 'silencio' && !isListening ? '○ PARADO' : ''}
           </Text>
         </View>
       </Animated.View>
 
       {/* Medidor visual de ponteiro */}
       <TunerGauge
-        cents={currentNote.cents}
-        status={currentNote.status}
+        cents={currentTuning.cents}
+        status={currentTuning.status}
       />
 
       {/* Botão principal de ligar/desligar o microfone */}
@@ -270,6 +268,11 @@ const styles = StyleSheet.create({
     color: '#78909C',
     fontSize: 15,
     fontWeight: '500',
+    marginTop: 2,
+  },
+  targetFrequencyText: {
+    color: '#546E7A',
+    fontSize: 12,
     marginTop: 2,
   },
   statusBadge: {
