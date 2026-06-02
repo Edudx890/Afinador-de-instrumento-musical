@@ -68,6 +68,49 @@ Antes do primeiro build, pode ser necessário autenticar:
 npx eas-cli@latest login
 ```
 
+## Testar APK no Android físico
+
+Use este fluxo para validar o MVP completo, incluindo microfone real:
+
+1. Gere o APK preview:
+
+   ```bash
+   npm run build:android:apk
+   ```
+
+2. Aguarde o EAS finalizar o build.
+
+3. Abra no telefone Android o link ou QR code exibido pelo EAS.
+
+4. Baixe o arquivo `.apk`.
+
+5. Se o Android bloquear a instalação, habilite a permissão de instalar apps desconhecidos para o navegador ou gerenciador de arquivos usado no download.
+
+6. Instale o APK e abra o aplicativo.
+
+7. Permita o acesso ao microfone quando o app solicitar.
+
+8. Toque uma corda do violão e confira:
+   - frequência detectada em Hz;
+   - corda alvo ou mais próxima;
+   - diferença em cents;
+   - status visual: grave, afinada ou aguda.
+
+Alternativa com `adb`, caso o APK tenha sido baixado no computador:
+
+```bash
+adb devices
+adb install caminho/do/app.apk
+```
+
+Se já existir uma versão anterior instalada e o Android recusar a instalação:
+
+```bash
+adb install -r caminho/do/app.apk
+```
+
+Observação: o Expo Go não valida a captura real de áudio deste projeto, porque o microfone PCM usa `react-native-audio-record`, que é um módulo nativo.
+
 ## Funcionalidades do MVP
 
 - Tela única de afinador
