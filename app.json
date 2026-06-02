@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0D1B2A",
+    "newArchEnabled": false,
     "android": {
       "package": "com.academico.afinadorviolao",
       "versionCode": 1,
