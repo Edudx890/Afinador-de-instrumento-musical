@@ -161,7 +161,8 @@ Observação: o Expo Go não valida a captura real de áudio deste projeto, porq
 
 - A permissão de microfone é declarada em `app.json`.
 - O cálculo de cents compara a frequência detectada com a corda selecionada ou com a corda mais próxima.
-- O módulo `react-native-audio-record` exige build nativo. Se o app abrir no Expo Go, a interface pode carregar, mas a captura real de áudio não deve ser considerada validada.
+- O módulo `react-native-audio-record` exige build nativo. Se o app abrir em um build sem esse módulo, a interface deve carregar, mas a captura real de áudio exibirá uma mensagem de indisponibilidade.
+- A New Architecture está desativada em `app.json` para reduzir risco de incompatibilidade com o módulo nativo de áudio usado no MVP.
 - O projeto não mantém uma pasta Android nativa completa no repositório. A configuração principal do Expo fica em `app.json` e `eas.json`.
 
 ## Comandos úteis

@@ -11,8 +11,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
-import AudioRecord from 'react-native-audio-record';
+import { Alert, NativeModules, PermissionsAndroid, Platform } from 'react-native';
+import type AudioRecord from 'react-native-audio-record';
 import { Buffer } from 'buffer';
 import { detectPitch } from '../utils/noteDetection';
 
@@ -35,6 +35,16 @@ const AUDIO_OPTIONS = {
   audioSource: 6,
   wavFile: 'recording.wav',
   bufferSize: 4096,
+};
+
+type AudioRecordModule = typeof AudioRecord;
+
+const getAudioRecord = (): AudioRecordModule | null => {
+  if (!NativeModules.RNAudioRecord) {
+    return null;
+  }
+
+  return require('react-native-audio-record').default;
 };
 
 const base64ToFloat32Array = (base64: string): Float32Array => {
@@ -61,6 +71,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   const isActiveRef = useRef(false);
   const initializedRef = useRef(false);
   const frequencyRef = useRef(0);
+  const audioRecordRef = useRef<AudioRecordModule | null>(null);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
@@ -112,8 +123,15 @@ export function useAudioCapture(): UseAudioCaptureReturn {
 
   const initAudioRecord = useCallback(() => {
     if (initializedRef.current) return;
-    AudioRecord.init(AUDIO_OPTIONS);
-    AudioRecord.on('data', handleAudioData);
+
+    const audioRecord = getAudioRecord();
+    if (!audioRecord) {
+      throw new Error('Modulo nativo de audio indisponivel neste build.');
+    }
+
+    audioRecord.init(AUDIO_OPTIONS);
+    audioRecord.on('data', handleAudioData);
+    audioRecordRef.current = audioRecord;
     initializedRef.current = true;
   }, [handleAudioData]);
 
@@ -136,12 +154,12 @@ export function useAudioCapture(): UseAudioCaptureReturn {
       return;
     }
 
-    initAudioRecord();
-    isActiveRef.current = true;
-    frequencyRef.current = 0;
-
     try {
-      await AudioRecord.start();
+      initAudioRecord();
+      isActiveRef.current = true;
+      frequencyRef.current = 0;
+
+      await audioRecordRef.current?.start();
       setState(prev => ({
         ...prev,
         isListening: true,
@@ -156,7 +174,9 @@ export function useAudioCapture(): UseAudioCaptureReturn {
         ...prev,
         isListening: false,
         frequency: 0,
-        error: 'Não foi possível iniciar o microfone.',
+        error: error instanceof Error && error.message.includes('Modulo nativo')
+          ? 'Captura de áudio real indisponível neste build. Gere e instale o APK EAS para testar o microfone.'
+          : 'Não foi possível iniciar o microfone.',
       }));
     }
   }, [initAudioRecord, requestPermission]);
@@ -174,7 +194,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     isActiveRef.current = false;
     frequencyRef.current = 0;
 
-    AudioRecord.stop().catch(error => {
+    audioRecordRef.current?.stop().catch(error => {
       console.warn('Erro ao parar gravação:', error);
     });
 
@@ -188,7 +208,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
   useEffect(() => {
     return () => {
       isActiveRef.current = false;
-      AudioRecord.stop().catch(() => null);
+      audioRecordRef.current?.stop().catch(() => null);
     };
   }, []);
 
