@@ -1,14 +1,20 @@
-/**
+/*
  * useAudioCapture.ts - Hook personalizado para captura de áudio
- * 
- * Gerencia o ciclo de vida do microfone e do processamento de áudio:
- * - Solicita permissão de microfone ao usuário
- * - Inicia/para a captura de áudio
- * - Retorna a frequência detectada em tempo real
+ *
+ * Esta versão implementa a estratégia de áudio com um módulo nativo
+ * (`react-native-audio-record`) para receber blocos de PCM em tempo real.
+ *
+ * Observação importante:
+ * - Esta abordagem requer um build EAS personalizado / development build
+ *   ou APK EAS, pois o Expo Go padrão não suporta módulos nativos não incluídos.
+ * - O hook faz a permissão de microfone e processa os dados PCM para pitch.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import AudioRecord from 'react-native-audio-record';
+import { Buffer } from 'buffer';
+import { detectPitch } from '../utils/noteDetection';
 
 interface AudioCaptureState {
   frequency: number;      // Frequência detectada em Hz
@@ -22,6 +28,28 @@ interface UseAudioCaptureReturn extends AudioCaptureState {
   stopListening: () => void;
 }
 
+const AUDIO_OPTIONS = {
+  sampleRate: 44100,
+  channels: 1,
+  bitsPerSample: 16,
+  audioSource: 6,
+  wavFile: 'recording.wav',
+  bufferSize: 2048,
+};
+
+const base64ToFloat32Array = (base64: string): Float32Array => {
+  const buffer = Buffer.from(base64, 'base64');
+  const sampleCount = buffer.length / 2;
+  const float32 = new Float32Array(sampleCount);
+
+  for (let i = 0; i < sampleCount; i += 1) {
+    const int16 = buffer.readInt16LE(i * 2);
+    float32[i] = int16 / 32768;
+  }
+
+  return float32;
+};
+
 export function useAudioCapture(): UseAudioCaptureReturn {
   const [state, setState] = useState<AudioCaptureState>({
     frequency: 0,
@@ -30,13 +58,10 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     error: null,
   });
 
-  // Referências para controle do processamento
   const isActiveRef = useRef(false);
+  const initializedRef = useRef(false);
+  const frequencyRef = useRef(0);
 
-  /**
-   * Solicita permissão de acesso ao microfone
-   * No Android, usa a API de permissões em tempo de execução
-   */
   const requestPermission = useCallback(async (): Promise<boolean> => {
     if (Platform.OS === 'android') {
       try {
@@ -44,29 +69,55 @@ export function useAudioCapture(): UseAudioCaptureReturn {
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
           {
             title: 'Permissão de Microfone',
-            message: 'O Afinador precisa acessar o microfone para detectar as notas musicais.',
+            message: 'O Afinador precisa acessar o microfone para detectar as notas do violão.',
             buttonNeutral: 'Perguntar depois',
             buttonNegative: 'Cancelar',
             buttonPositive: 'Permitir',
           }
         );
+
         return granted === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (err) {
-        console.error('Erro ao solicitar permissão:', err);
+      } catch (error) {
+        console.error('Erro ao solicitar permissão:', error);
         return false;
       }
     }
-    // iOS solicita permissão automaticamente ao iniciar captura
+
     return true;
   }, []);
 
-  /**
-   * Inicia a captura de áudio pelo microfone
-   * Solicita permissão se necessário. A leitura real de PCM será implementada
-   * na task de áudio com uma biblioteca compatível com development build/EAS.
-   */
+  const handleAudioData = useCallback((data: string) => {
+    if (!isActiveRef.current) return;
+
+    try {
+      const floatData = base64ToFloat32Array(data);
+      const pitch = detectPitch(floatData, AUDIO_OPTIONS.sampleRate);
+
+      if (pitch > 0) {
+        const smoothed = frequencyRef.current
+          ? frequencyRef.current * 0.7 + pitch * 0.3
+          : pitch;
+
+        frequencyRef.current = smoothed;
+        setState(prev => ({
+          ...prev,
+          frequency: Math.round(smoothed * 100) / 100,
+          error: null,
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao processar áudio:', error);
+    }
+  }, []);
+
+  const initAudioRecord = useCallback(() => {
+    if (initializedRef.current) return;
+    AudioRecord.init(AUDIO_OPTIONS);
+    AudioRecord.on('data', handleAudioData);
+    initializedRef.current = true;
+  }, [handleAudioData]);
+
   const startListening = useCallback(async () => {
-    // Verifica permissão
     const permitted = await requestPermission();
     if (!permitted) {
       setState(prev => ({
@@ -74,6 +125,7 @@ export function useAudioCapture(): UseAudioCaptureReturn {
         error: 'Permissão de microfone negada. Habilite nas configurações do dispositivo.',
         hasPermission: false,
       }));
+
       Alert.alert(
         'Permissão Negada',
         'O aplicativo precisa de acesso ao microfone para funcionar.',
@@ -82,22 +134,34 @@ export function useAudioCapture(): UseAudioCaptureReturn {
       return;
     }
 
+    initAudioRecord();
     isActiveRef.current = true;
+    frequencyRef.current = 0;
 
-    setState(prev => ({
-      ...prev,
-      isListening: true,
-      hasPermission: true,
-      frequency: 0,
-      error: 'Captura de frequencia ainda sera implementada na task de audio.',
-    }));
-  }, [requestPermission]);
+    try {
+      await AudioRecord.start();
+      setState(prev => ({
+        ...prev,
+        isListening: true,
+        hasPermission: true,
+        frequency: 0,
+        error: null,
+      }));
+    } catch (error) {
+      console.error('Erro ao iniciar gravação:', error);
+      setState(prev => ({
+        ...prev,
+        error: 'Não foi possível iniciar o microfone.',
+      }));
+    }
+  }, [initAudioRecord, requestPermission]);
 
-  /**
-   * Para a captura de áudio e limpa os recursos
-   */
   const stopListening = useCallback(() => {
     isActiveRef.current = false;
+
+    AudioRecord.stop().catch(error => {
+      console.warn('Erro ao parar gravação:', error);
+    });
 
     setState(prev => ({
       ...prev,
@@ -106,12 +170,12 @@ export function useAudioCapture(): UseAudioCaptureReturn {
     }));
   }, []);
 
-  // Limpa recursos ao desmontar o componente
   useEffect(() => {
     return () => {
-      stopListening();
+      isActiveRef.current = false;
+      AudioRecord.stop().catch(() => null);
     };
-  }, [stopListening]);
+  }, []);
 
   return {
     ...state,
