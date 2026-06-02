@@ -70,7 +70,7 @@ export default function GuitarStringSelector({
       <View style={styles.modeIndicator}>
         <View style={[styles.modeDot, selectedString === null && styles.modeDotActive]} />
         <Text style={[styles.modeText, selectedString === null && styles.modeTextActive]}>
-          {selectedString === null ? '● Detecção Automática' : `● Corda ${selectedString}ª fixada`}
+          {selectedString === null ? 'Detecção automática' : `Corda ${selectedString}ª fixada`}
         </Text>
       </View>
     </View>
