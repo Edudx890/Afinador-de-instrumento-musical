@@ -4,6 +4,14 @@ Aplicativo mobile acadêmico para afinar violão em Android. O MVP usa React Nat
 
 Integrantes: Moreno Jones e Eduardo Amaral
 
+## Visão Geral
+
+O app foi organizado como um projeto Expo managed com uma camada nativa de áudio para o Android. A base visual fica em React Native, a captura de microfone depende de `react-native-audio-record`, e a lógica de detecção de pitch fica separada em utilitários puros para facilitar leitura, manutenção e correção.
+
+Leitura técnica detalhada:
+
+- [Arquitetura e implementação](docs/architecture.md)
+
 ## Stack
 
 - Expo SDK 54
@@ -142,10 +150,11 @@ Observação: o Expo Go não valida a captura real de áudio deste projeto, porq
 ├── eas.json
 ├── index.ts
 ├── package.json
+├── docs
+│   └── architecture.md
 ├── src
 │   ├── components
 │   │   ├── GuitarStringSelector.tsx
-│   │   ├── ReferenceSounds.tsx
 │   │   ├── TunerGauge.tsx
 │   │   └── TunerScreen.tsx
 │   ├── hooks
@@ -164,6 +173,7 @@ Observação: o Expo Go não valida a captura real de áudio deste projeto, porq
 - O módulo `react-native-audio-record` exige build nativo. Se o app abrir em um build sem esse módulo, a interface deve carregar, mas a captura real de áudio exibirá uma mensagem de indisponibilidade.
 - A New Architecture está desativada em `app.json` para reduzir risco de incompatibilidade com o módulo nativo de áudio usado no MVP.
 - O projeto não mantém uma pasta Android nativa completa no repositório. A configuração principal do Expo fica em `app.json` e `eas.json`.
+- O layout visual foi simplificado para apresentação, sem elementos decorativos desnecessários.
 
 ## Comandos úteis
 
