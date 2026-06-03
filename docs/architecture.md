@@ -12,6 +12,17 @@ Este projeto entrega um afinador de violão em formato MVP para Android, com foc
 
 O desenho da solução prioriza clareza de separação entre interface, captura de áudio e regras de domínio.
 
+## Funcionalidades Principais
+
+As funcionalidades centrais foram implementadas diretamente na base do projeto, seguindo uma divisão simples por responsabilidade:
+
+- a tela principal concentra a experiência do usuário e os controles de interação;
+- a captura de áudio fica isolada em um hook dedicado;
+- o cálculo de afinação e pitch fica em funções puras de domínio;
+- o build Android é preparado por configuração do Expo e do EAS.
+
+Na prática, isso significa que a tela não contém regra musical pesada e a lógica musical não depende da UI. Essa separação deixa o app mais fácil de manter, revisar e apresentar.
+
 ## Stack E Modelo De Build
 
 - Expo SDK 54 como base do projeto.
