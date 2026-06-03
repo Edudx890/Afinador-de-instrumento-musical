@@ -22,7 +22,6 @@ import { useAudioCapture } from '../hooks/useAudioCapture';
 import { getTuningResult, TuningResult } from '../utils/noteDetection';
 import TunerGauge from './TunerGauge';
 import GuitarStringSelector from './GuitarStringSelector';
-import ReferenceSounds from './ReferenceSounds';
 
 export default function TunerScreen() {
   // Hook de captura de áudio
@@ -128,7 +127,7 @@ export default function TunerScreen() {
 
       {/* Cabeçalho */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🎸 Afinador</Text>
+        <Text style={styles.headerTitle}>Afinador</Text>
         <Text style={styles.headerSubtitle}>Violão</Text>
       </View>
 
@@ -153,11 +152,11 @@ export default function TunerScreen() {
         {/* Mensagem de status */}
         <View style={[styles.statusBadge, { borderColor: statusColor }]}>
           <Text style={[styles.statusText, { color: statusColor }]}>
-            {currentTuning.status === 'afinado' && '✓ AFINADA'}
-            {currentTuning.status === 'grave' && '↓ GRAVE'}
-            {currentTuning.status === 'agudo' && '↑ AGUDA'}
-            {currentTuning.status === 'silencio' && isListening ? '~ OUVINDO...' : ''}
-            {currentTuning.status === 'silencio' && !isListening ? '○ PARADO' : ''}
+            {currentTuning.status === 'afinado' && 'AFINADA'}
+            {currentTuning.status === 'grave' && 'GRAVE'}
+            {currentTuning.status === 'agudo' && 'AGUDA'}
+            {currentTuning.status === 'silencio' && isListening ? 'OUVINDO...' : ''}
+            {currentTuning.status === 'silencio' && !isListening ? 'PARADO' : ''}
           </Text>
         </View>
       </Animated.View>
@@ -173,7 +172,6 @@ export default function TunerScreen() {
         style={[styles.micButton, isListening && styles.micButtonActive]}
         onPress={toggleListening}
         activeOpacity={0.8}>
-        <Text style={styles.micIcon}>{isListening ? '⏹' : '🎤'}</Text>
         <Text style={styles.micButtonText}>
           {isListening ? 'Parar' : 'Iniciar Afinação'}
         </Text>
@@ -182,7 +180,7 @@ export default function TunerScreen() {
       {/* Mensagem de erro (se houver) */}
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>⚠ {error}</Text>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
@@ -195,16 +193,10 @@ export default function TunerScreen() {
         onSelectString={setSelectedString}
       />
 
-      {/* Separador */}
-      <View style={styles.divider} />
-
-      {/* Sons de referência */}
-      <ReferenceSounds selectedString={selectedString} />
-
       {/* Dica de uso */}
       <View style={styles.tipContainer}>
         <Text style={styles.tipText}>
-          💡 Dica: Toque a corda do violão e aguarde o ponteiro estabilizar.
+          Toque a corda do violão e aguarde o ponteiro estabilizar.
           {'\n'}Verde = afinado. Vermelho = ajuste necessário.
         </Text>
       </View>
@@ -305,9 +297,6 @@ const styles = StyleSheet.create({
   micButtonActive: {
     backgroundColor: '#B71C1C',
     shadowColor: '#B71C1C',
-  },
-  micIcon: {
-    fontSize: 20,
   },
   micButtonText: {
     color: '#FFFFFF',

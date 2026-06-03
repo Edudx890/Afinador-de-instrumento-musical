@@ -8,8 +8,8 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing, Text } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import { View, StyleSheet, Animated, Text } from 'react-native';
+import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
 
 interface TunerGaugeProps {
   cents: number;    // Desvio em cents (-50 a +50)
@@ -189,13 +189,13 @@ export default function TunerGauge({ cents, status }: TunerGaugeProps) {
       {/* Indicadores de GRAVE / AFINADO / AGUDO */}
       <View style={styles.labelsRow}>
         <Text style={[styles.statusLabel, status === 'grave' && styles.activeLabel]}>
-          ▼ GRAVE
+          GRAVE
         </Text>
         <Text style={[styles.statusLabel, styles.centerLabel, status === 'afinado' && styles.activeCenterLabel]}>
-          ● AFINADO
+          AFINADO
         </Text>
         <Text style={[styles.statusLabel, status === 'agudo' && styles.activeLabel]}>
-          AGUDO ▲
+          AGUDA
         </Text>
       </View>
     </View>
