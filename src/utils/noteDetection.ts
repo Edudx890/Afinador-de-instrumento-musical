@@ -53,7 +53,7 @@ export const GUITAR_STRINGS: GuitarString[] = [
  */
 export function frequencyToNote(frequency: number): NoteInfo | null {
   // Valida a frequência (faixa auditiva relevante para instrumentos)
-  if (!frequency || frequency < 20 || frequency > 5000) {
+  if (!Number.isFinite(frequency) || frequency < 20 || frequency > 5000) {
     return {
       note: '--',
       octave: 0,
@@ -109,7 +109,7 @@ export function frequencyToNote(frequency: number): NoteInfo | null {
  * @returns Dados da corda mais próxima
  */
 export function findNearestGuitarString(frequency: number) {
-  if (!frequency || frequency < 20) return null;
+  if (!Number.isFinite(frequency) || frequency < 20) return null;
 
   let nearestString = GUITAR_STRINGS[0];
   let minDiff = Math.abs(getCentsDifference(frequency, nearestString.frequency));
@@ -127,7 +127,10 @@ export function findNearestGuitarString(frequency: number) {
 }
 
 export function getCentsDifference(frequency: number, targetFrequency: number): number {
-  if (!frequency || !targetFrequency) return 0;
+  if (!Number.isFinite(frequency) || !Number.isFinite(targetFrequency) || targetFrequency <= 0) {
+    return 0;
+  }
+
   return Math.round(1200 * Math.log2(frequency / targetFrequency));
 }
 
@@ -135,7 +138,7 @@ export function getTuningResult(
   frequency: number,
   selectedString: number | null = null
 ): TuningResult {
-  if (!frequency || frequency < 20) {
+  if (!Number.isFinite(frequency) || frequency < 20) {
     const targetString = selectedString
       ? GUITAR_STRINGS.find(item => item.string === selectedString) ?? null
       : null;
@@ -186,14 +189,8 @@ export function getTuningResult(
  */
 export function detectPitch(buffer: Float32Array, sampleRate: number): number {
   const SIZE = buffer.length;
-  const MAX_SAMPLES = Math.floor(SIZE / 2);
-  
-  // Calcula a autocorrelação para cada lag possível
-  let bestOffset = -1;
-  let bestCorrelation = 0;
   let rms = 0;
-  let foundGoodCorrelation = false;
-  
+
   // Calcula RMS (volume do sinal) para filtrar silêncio
   for (let i = 0; i < SIZE; i++) {
     const val = buffer[i];
@@ -204,38 +201,74 @@ export function detectPitch(buffer: Float32Array, sampleRate: number): number {
   // Se o sinal for muito fraco, retorna 0 (silêncio)
   if (rms < 0.01) return 0;
 
-  let lastCorrelation = 1;
-  
-  for (let offset = 0; offset < MAX_SAMPLES; offset++) {
-    let correlation = 0;
+  const MIN_GUITAR_FREQUENCY = 70;
+  const MAX_GUITAR_FREQUENCY = 400;
+  const minTau = Math.floor(sampleRate / MAX_GUITAR_FREQUENCY);
+  const maxTau = Math.min(
+    Math.ceil(sampleRate / MIN_GUITAR_FREQUENCY),
+    Math.floor(SIZE / 2)
+  );
 
-    // Calcula correlação para o offset atual
-    for (let i = 0; i < MAX_SAMPLES; i++) {
-      correlation += Math.abs((buffer[i]) - (buffer[i + offset]));
+  const yinBuffer = new Float32Array(maxTau + 1);
+  yinBuffer[0] = 1;
+
+  for (let tau = 1; tau <= maxTau; tau++) {
+    let sum = 0;
+
+    for (let i = 0; i < SIZE - tau; i++) {
+      const delta = buffer[i] - buffer[i + tau];
+      sum += delta * delta;
     }
-    
-    correlation = 1 - (correlation / MAX_SAMPLES);
-    
-    // Procura o primeiro pico de correlação (frequência fundamental)
-    if (correlation > 0.9 && correlation > lastCorrelation) {
-      foundGoodCorrelation = true;
-      if (correlation > bestCorrelation) {
-        bestCorrelation = correlation;
-        bestOffset = offset;
+
+    yinBuffer[tau] = sum;
+  }
+
+  let runningSum = 0;
+  for (let tau = 1; tau <= maxTau; tau++) {
+    runningSum += yinBuffer[tau];
+    yinBuffer[tau] = runningSum === 0 ? 1 : (yinBuffer[tau] * tau) / runningSum;
+  }
+
+  const threshold = 0.15;
+  let tauEstimate = -1;
+
+  for (let tau = minTau; tau <= maxTau; tau++) {
+    if (yinBuffer[tau] < threshold) {
+      while (tau + 1 <= maxTau && yinBuffer[tau + 1] < yinBuffer[tau]) {
+        tau += 1;
       }
-    } else if (foundGoodCorrelation) {
-      // Refinamento por interpolação parabólica para maior precisão
-      const shift = (correlation - lastCorrelation) / (bestCorrelation - lastCorrelation);
-      return sampleRate / (bestOffset + (8 * shift));
+
+      tauEstimate = tau;
+      break;
     }
-    
-    lastCorrelation = correlation;
   }
 
-  // Retorna a frequência se encontrou boa correlação
-  if (bestCorrelation > 0.01) {
-    return sampleRate / bestOffset;
+  if (tauEstimate === -1) {
+    let bestTau = minTau;
+
+    for (let tau = minTau + 1; tau <= maxTau; tau++) {
+      if (yinBuffer[tau] < yinBuffer[bestTau]) {
+        bestTau = tau;
+      }
+    }
+
+    if (yinBuffer[bestTau] > 0.3) {
+      return 0;
+    }
+
+    tauEstimate = bestTau;
   }
-  
-  return 0;
+
+  const betterTau =
+    tauEstimate > 1 && tauEstimate < maxTau
+      ? tauEstimate +
+        (yinBuffer[tauEstimate - 1] - yinBuffer[tauEstimate + 1]) /
+          (2 *
+            (yinBuffer[tauEstimate - 1] -
+              2 * yinBuffer[tauEstimate] +
+              yinBuffer[tauEstimate + 1]))
+      : tauEstimate;
+
+  const detectedFrequency = sampleRate / betterTau;
+  return Number.isFinite(detectedFrequency) ? detectedFrequency : 0;
 }
