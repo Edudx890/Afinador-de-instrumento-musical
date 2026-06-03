@@ -10,8 +10,15 @@
     "android": {
       "package": "com.academico.afinadorviolao",
       "versionCode": 1,
-      "permissions": ["RECORD_AUDIO"],
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
       "predictiveBackGestureEnabled": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a1a6fb17-e7db-4b0c-93bf-d67770ffd11c"
+      }
     }
   }
 }
